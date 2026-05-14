@@ -243,9 +243,10 @@ def train(
                 max_rouge_samples = 100
                 for i in range(min(val_src.size(1), max(0, max_rouge_samples - len(val_predictions)))):
                     try:
-                        generated = generate_summary(
+                        generated_ids = generate_summary(
                             model, val_src[:, i:i+1], special_ids, max_len=max_seq_len
                         )
+                        generated = tokenizer.decode(generated_ids, skip_special_tokens=True)
                         reference = tokenizer.decode(
                             [t.item() for t in val_tgt[:, i] if t.item() != special_ids["pad"]],
                             skip_special_tokens=True
