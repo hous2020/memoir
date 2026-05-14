@@ -4,7 +4,7 @@ from typing import Optional
 
 import torch
 from tokenizers import Tokenizer
-from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
+from transformers import AutoModelForSeq2SeqLM, AutoTokenizer, PreTrainedTokenizerFast
 
 from transformer_model import TransformerSummarizer
 
@@ -33,7 +33,7 @@ class FrenchSummarizer:
                 logger.warning(f"Local pretrained model not found. Falling back to Hugging Face: {model_name}")
 
             logger.info(f"Loading pretrained model from: {model_name}...")
-            self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+            self.tokenizer = self._load_pretrained_tokenizer(model_name)
             self.model = AutoModelForSeq2SeqLM.from_pretrained(model_name).to(self.device)
             self.model.eval()
             logger.info("Pretrained model loaded successfully.")
@@ -62,6 +62,20 @@ class FrenchSummarizer:
             logger.warning(f"Model path {model_path} not found. Using untrained model.")
 
         self.model.eval()
+
+    def _load_pretrained_tokenizer(self, model_name):
+        try:
+            return AutoTokenizer.from_pretrained(model_name, use_fast=True)
+        except TypeError as exc:
+            logger.warning(f"AutoTokenizer failed, retrying with PreTrainedTokenizerFast: {exc}")
+            return PreTrainedTokenizerFast.from_pretrained(
+                model_name,
+                bos_token="<s>",
+                eos_token="</s>",
+                unk_token="<unk>",
+                pad_token="<pad>",
+                mask_token="<mask>",
+            )
 
     def _load_special_ids(self):
         special_ids = {
