@@ -106,7 +106,7 @@ def load_all_combined_datasets(base_dir="data"):
         print(f"Local data directory does not exist: {base_dir}")
         return None
 
-    skip_dirs = {"temp_cache", "abstract_tmp", "pretrained_barthez"}
+    skip_dirs = {"temp_cache", "abstract_tmp", "model_cache"}
 
     for item in os.listdir(base_dir):
         item_path = os.path.join(base_dir, item)

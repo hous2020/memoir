@@ -4,7 +4,6 @@ from typing import Optional
 
 import torch
 from tokenizers import Tokenizer
-from transformers import AutoModelForSeq2SeqLM, AutoTokenizer, PreTrainedTokenizerFast
 
 from transformer_model import TransformerSummarizer
 
@@ -14,32 +13,22 @@ logger = logging.getLogger(__name__)
 
 
 class FrenchSummarizer:
-    def __init__(self, model_type: str = "pretrained", model_path: Optional[str] = None):
+    def __init__(self, model_type: str = "scratch", model_path: Optional[str] = None):
         """
-        Initializes the French summarizer.
+        Initializes the French summarizer with the custom Transformer model.
 
         Args:
-            model_type: "pretrained" or "scratch".
+            model_type: Only "scratch" is supported.
             model_path: Path to the scratch model weights.
         """
+        if model_type != "scratch":
+            raise ValueError("Only model_type='scratch' is supported in this project.")
+
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
-        self.model_type = model_type
+        self.model_type = "scratch"
         logger.info(f"Using device: {self.device}")
-
-        if model_type == "pretrained":
-            model_name = "models/pretrained_barthez"
-            if not os.path.exists(model_name):
-                model_name = "moussaKam/barthez-orangesum-abstract"
-                logger.warning(f"Local pretrained model not found. Falling back to Hugging Face: {model_name}")
-
-            logger.info(f"Loading pretrained model from: {model_name}...")
-            self.tokenizer = self._load_pretrained_tokenizer(model_name)
-            self.model = AutoModelForSeq2SeqLM.from_pretrained(model_name).to(self.device)
-            self.model.eval()
-            logger.info("Pretrained model loaded successfully.")
-            return
-
         logger.info(f"Loading custom model from scratch: {model_path}...")
+
         self.custom_tokenizer = Tokenizer.from_file("data/custom_tokenizer.json")
         self.special_ids = self._load_special_ids()
 
@@ -63,20 +52,6 @@ class FrenchSummarizer:
 
         self.model.eval()
 
-    def _load_pretrained_tokenizer(self, model_name):
-        try:
-            return AutoTokenizer.from_pretrained(model_name, use_fast=True)
-        except TypeError as exc:
-            logger.warning(f"AutoTokenizer failed, retrying with PreTrainedTokenizerFast: {exc}")
-            return PreTrainedTokenizerFast.from_pretrained(
-                model_name,
-                bos_token="<s>",
-                eos_token="</s>",
-                unk_token="<unk>",
-                pad_token="<pad>",
-                mask_token="<mask>",
-            )
-
     def _load_special_ids(self):
         special_ids = {
             "sos": self.custom_tokenizer.token_to_id("<s>"),
@@ -93,33 +68,7 @@ class FrenchSummarizer:
     def summarize(self, text: str, max_length: int = 150, min_length: int = 40, num_beams: int = 4) -> str:
         if not text or not text.strip():
             return ""
-
-        if self.model_type == "pretrained":
-            return self._summarize_pretrained(text, max_length, min_length, num_beams)
         return self._summarize_scratch(text, max_length)
-
-    def _summarize_pretrained(self, text, max_length, min_length, num_beams):
-        inputs = self.tokenizer(
-            [text],
-            max_length=1024,
-            truncation=True,
-            return_tensors="pt",
-            padding="longest",
-        )
-        input_ids = inputs.input_ids.to(self.device)
-        attention_mask = inputs.attention_mask.to(self.device)
-
-        with torch.no_grad():
-            summary_ids = self.model.generate(
-                input_ids,
-                attention_mask=attention_mask,
-                num_beams=num_beams,
-                max_length=max_length,
-                min_length=min_length,
-                no_repeat_ngram_size=3,
-                early_stopping=True,
-            )
-        return self.tokenizer.decode(summary_ids[0], skip_special_tokens=True)
 
     def _summarize_scratch(self, text, max_len=128):
         try:
@@ -155,7 +104,6 @@ class FrenchSummarizer:
                 if len(tgt_indices) < 5:
                     logits[self.special_ids["eos"]] = -float("inf")
 
-                # Basic no-repeat trigram guard for greedy decoding.
                 if len(tgt_indices) >= 4:
                     last_bigram = tuple(tgt_indices[-2:])
                     for index in range(len(tgt_indices) - 2):

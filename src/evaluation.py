@@ -9,7 +9,7 @@ from summarizer import FrenchSummarizer
 
 def evaluate_model(
     num_samples=20,
-    model_type="pretrained",
+    model_type="scratch",
     dataset_name="xlsum",
     dataset_path=None,
 ):
@@ -18,7 +18,7 @@ def evaluate_model(
 
     Args:
         num_samples: Number of test samples to evaluate.
-        model_type: "pretrained" or "scratch".
+        model_type: "scratch".
         dataset_name: Hugging Face dataset name: "xlsum" or "mlsum".
         dataset_path: Optional local Hugging Face dataset path.
     """
@@ -69,8 +69,8 @@ def evaluate_model(
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Evaluate summarization models with ROUGE.")
-    parser.add_argument("--model-type", choices=["pretrained", "scratch", "both"], default="both")
+    parser = argparse.ArgumentParser(description="Evaluate the scratch summarization model with ROUGE.")
+    parser.add_argument("--model-type", choices=["scratch"], default="scratch")
     parser.add_argument("--num-samples", type=int, default=20)
     parser.add_argument("--dataset-name", choices=["xlsum", "mlsum"], default="xlsum")
     parser.add_argument("--dataset-path", default=None)
@@ -80,12 +80,10 @@ def parse_args():
 if __name__ == "__main__":
     args = parse_args()
 
-    model_types = ["pretrained", "scratch"] if args.model_type == "both" else [args.model_type]
-    for model_type in model_types:
-        print(f"\n--- Evaluating {model_type} model ---")
-        evaluate_model(
-            num_samples=args.num_samples,
-            model_type=model_type,
-            dataset_name=args.dataset_name,
-            dataset_path=args.dataset_path,
-        )
+    print("\n--- Evaluating scratch model ---")
+    evaluate_model(
+        num_samples=args.num_samples,
+        model_type=args.model_type,
+        dataset_name=args.dataset_name,
+        dataset_path=args.dataset_path,
+    )
