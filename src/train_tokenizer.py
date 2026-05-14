@@ -1,12 +1,21 @@
-from tokenizers import Tokenizer, models, trainers, pre_tokenizers, decoders, processors
-from data_loader import load_french_summarization_data
+import argparse
 import os
 
-def train_custom_tokenizer(vocab_size=30000, save_path="data/custom_tokenizer.json"):
+from tokenizers import Tokenizer, decoders, models, pre_tokenizers, processors, trainers
+
+from data_loader import load_huggingface_dataset
+
+
+def train_custom_tokenizer(
+    vocab_size=30000,
+    save_path="data/custom_tokenizer.json",
+    dataset_name="xlsum",
+    max_samples=None,
+):
     """
-    Trains a BPE tokenizer from scratch on the dataset.
+    Trains a BPE tokenizer from scratch on all combined datasets.
     """
-    print("Initializing Tokenizer Training...")
+    print("Initializing tokenizer training from Hugging Face datasets...")
     
     # 1. Initialize tokenizer
     tokenizer = Tokenizer(models.BPE())
@@ -22,20 +31,20 @@ def train_custom_tokenizer(vocab_size=30000, save_path="data/custom_tokenizer.js
     )
     
     # 3. Load data
-    # We use the training set for the tokenizer
-    # Note: Using a subset for speed in this demo context if needed, but ideally full train set
-    dataset = load_french_summarization_data(split="test", subset="french") # Using test split here just for demo speed/availability in data_loader fallback
-    
-    if dataset is None:
-        print("Error: Could not load dataset.")
-        return
+    dataset = load_huggingface_dataset(
+        dataset_name=dataset_name,
+        split="train",
+        max_samples=max_samples,
+    )
 
     # Iterator for the tokenizer
     def batch_iterator(batch_size=1000):
         for i in range(0, len(dataset), batch_size):
             batch = dataset[i : i + batch_size]
             # Combine text and summary for vocabulary coverage
-            yield batch["text"] + batch["summary"]
+            texts = [text for text in batch["text"] if text]
+            summaries = [summary for summary in batch["summary"] if summary]
+            yield texts + summaries
 
     # 4. Train
     print("Training tokenizer...")
@@ -46,5 +55,21 @@ def train_custom_tokenizer(vocab_size=30000, save_path="data/custom_tokenizer.js
     tokenizer.save(save_path)
     print(f"Tokenizer saved to {save_path}")
 
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Train a BPE tokenizer for summarization.")
+    parser.add_argument("--dataset-name", choices=["xlsum", "mlsum", "all"], default="xlsum")
+    parser.add_argument("--max-samples", type=int, default=None)
+    parser.add_argument("--vocab-size", type=int, default=30000)
+    parser.add_argument("--save-path", default="data/custom_tokenizer.json")
+    return parser.parse_args()
+
+
 if __name__ == "__main__":
-    train_custom_tokenizer()
+    args = parse_args()
+    train_custom_tokenizer(
+        vocab_size=args.vocab_size,
+        save_path=args.save_path,
+        dataset_name=args.dataset_name,
+        max_samples=args.max_samples,
+    )

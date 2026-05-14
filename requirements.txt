@@ -1,8 +1,12 @@
 torch
 transformers
 datasets
+tokenizers
 sentencepiece
 rouge-score
+evaluate
 pandas
 numpy
 accelerate
+streamlit
+tqdm

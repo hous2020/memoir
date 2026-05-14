@@ -1,0 +1,23 @@
+__pycache__/
+*.py[cod]
+*.pyo
+
+.venv/
+venv/
+env/
+
+.ipynb_checkpoints/
+.streamlit/secrets.toml
+
+# Local datasets and trained artifacts are large and should be recreated or shared separately.
+data/
+models/
+
+# Generated reports
+*.aux
+*.log
+*.out
+*.toc
+*.pdf
+memoire_explications.tex
+protocole.tex

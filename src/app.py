@@ -22,8 +22,11 @@ def count_words(text):
     return len(text.split())
 
 @st.cache_resource
-def load_summarizer():
-    return FrenchSummarizer()
+def load_summarizer(model_type="pretrained"):
+    if model_type == "pretrained":
+        return FrenchSummarizer(model_type="pretrained")
+    else:
+        return FrenchSummarizer(model_type="scratch", model_path="models/transformer_scratch.pth")
 
 # --- Interface Utilisateur ---
 
@@ -32,11 +35,30 @@ with st.sidebar:
     st.header("⚙️ Paramètres")
     st.divider()
     
+    # Choix du modèle
+    st.subheader("🤖 Choix du Modèle")
+    model_choice = st.radio(
+        "Sélectionnez le moteur de résumé :",
+        ["Modèle From Scratch (Votre entraînement)", "Modèle Pré-entraîné (BARThez)"],
+        index=0,
+        help="Choisissez entre votre modèle personnalisé ou le modèle professionnel BART."
+    )
+    
+    model_type = "scratch" if "Scratch" in model_choice else "pretrained"
+    
+    st.divider()
+    
     model_params = st.expander("Configuration du Modèle", expanded=True)
     with model_params:
-        min_length = st.slider("Longueur minimale", 10, 100, 40, help="Le résumé ne fera pas moins que ce nombre de tokens.")
-        max_length = st.slider("Longueur maximale", 50, 400, 150, help="Le résumé ne dépassera pas ce nombre de tokens.")
-        num_beams = st.slider("Faisceaux (Beams)", 1, 8, 4, help="Qualité de la recherche. Plus élevé = meilleur mais plus lent.")
+        if model_type == "pretrained":
+            min_length = st.slider("Longueur minimale", 10, 100, 40)
+            max_length = st.slider("Longueur maximale", 50, 400, 150)
+            num_beams = st.slider("Faisceaux (Beams)", 1, 8, 4)
+        else:
+            st.info("Le modèle 'From Scratch' utilise des paramètres fixes pour garantir la stabilité de la génération.")
+            max_length = 128
+            min_length = 10
+            num_beams = 1
     
     st.info("💡 Astuce : Ajustez la longueur maximale en fonction de la taille de votre texte source.")
     st.markdown("---")
@@ -48,8 +70,8 @@ st.markdown("Générez des synthèses précises de vos textes longs en quelques 
 
 # Chargement du modèle
 try:
-    with st.spinner("Initialisation du moteur d'IA..."):
-        summarizer = load_summarizer()
+    with st.spinner(f"Initialisation du modèle {model_type}..."):
+        summarizer = load_summarizer(model_type=model_type)
 except Exception as e:
     st.error(f"Erreur critique lors du chargement du modèle : {e}")
     st.stop()
@@ -138,4 +160,3 @@ with col2:
     elif not input_text:
         # État vide (Empty State)
         st.info("👈 Commencez par ajouter du texte ou un fichier dans la colonne de gauche.")
-        st.image("https://placehold.co/600x400?text=En+attente+de+contenu", caption="Votre résumé apparaîtra ici.")
