@@ -6,15 +6,23 @@ from datasets import DatasetDict, concatenate_datasets, load_dataset, load_from_
 HF_DATASETS = {
     "xlsum": {
         "repo_id": "csebuetnlp/xlsum",
-        "config": "french",
         "text_column": "text",
         "summary_column": "summary",
+        "parquet_files": {
+            "train": ["french/train/0000.parquet"],
+            "test": ["french/test/0000.parquet"],
+            "validation": ["french/validation/0000.parquet"],
+        },
     },
     "mlsum": {
         "repo_id": "reciTAL/mlsum",
-        "config": "fr",
         "text_column": "text",
         "summary_column": "summary",
+        "parquet_files": {
+            "train": ["fr/train/0000.parquet", "fr/train/0001.parquet", "fr/train/0002.parquet"],
+            "test": ["fr/test/0000.parquet"],
+            "validation": ["fr/validation/0000.parquet"],
+        },
     },
 }
 
@@ -60,8 +68,17 @@ def load_huggingface_dataset(dataset_name="xlsum", split="train", max_samples=No
         raise ValueError(f"Unknown dataset '{dataset_name}'. Available: {available}")
 
     spec = HF_DATASETS[dataset_name]
-    print(f"Loading {dataset_name} from Hugging Face ({spec['repo_id']}, split={split})...")
-    dataset = load_dataset(spec["repo_id"], spec["config"], split=split)
+    if split not in spec["parquet_files"]:
+        available_splits = ", ".join(spec["parquet_files"].keys())
+        raise ValueError(f"Unknown split '{split}' for {dataset_name}. Available: {available_splits}")
+
+    data_files = [
+        f"hf://datasets/{spec['repo_id']}@refs/convert/parquet/{filename}"
+        for filename in spec["parquet_files"][split]
+    ]
+
+    print(f"Loading {dataset_name} from Hugging Face Parquet files (split={split})...")
+    dataset = load_dataset("parquet", data_files=data_files, split="train")
     dataset = _normalize_dataset(dataset, spec["text_column"], spec["summary_column"])
     dataset = _select_max_samples(dataset, max_samples)
     print(f"Loaded {len(dataset)} examples from {dataset_name}.")
