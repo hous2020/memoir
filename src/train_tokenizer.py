@@ -58,7 +58,7 @@ def train_custom_tokenizer(
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Train a BPE tokenizer for summarization.")
-    parser.add_argument("--dataset-name", choices=["xlsum", "mlsum", "all"], default="xlsum")
+    parser.add_argument("--dataset-name", choices=["xlsum", "mlsum", "lemonde", "all"], default="xlsum")
     parser.add_argument("--max-samples", type=int, default=None)
     parser.add_argument("--vocab-size", type=int, default=30000)
     parser.add_argument("--save-path", default="data/custom_tokenizer.json")

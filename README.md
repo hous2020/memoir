@@ -81,9 +81,10 @@ python src/evaluation.py --model-type scratch --dataset-name xlsum --num-samples
 Datasets disponibles:
 
 ```text
-xlsum  -> csebuetnlp/xlsum, donnees francaises
-mlsum  -> reciTAL/mlsum, donnees francaises
-all    -> combine xlsum et mlsum pour l'entrainement
+xlsum   -> csebuetnlp/xlsum, donnees francaises (~20k exemples)
+mlsum   -> reciTAL/mlsum, donnees francaises (~200k exemples)
+lemonde -> trivago/mlsum, donnees francaises supplementaires (~30k exemples)
+all     -> combine xlsum, mlsum et lemonde pour l'entrainement (~250k exemples)
 ```
 
 Lance l'application locale apres entrainement:
@@ -91,6 +92,22 @@ Lance l'application locale apres entrainement:
 ```bash
 streamlit run src/app.py
 ```
+
+## Ameliorations recentes
+
+### Entraînement optimisé
+- **Gradient clipping** pour stabiliser l'entraînement (valeur par défaut: 1.0)
+- **Learning rate scheduler** CosineAnnealingLR pour une meilleure convergence
+- **Validation loop** avec calcul des métriques ROUGE en temps réel
+- **Early stopping** avec patience de 3 epochs pour éviter le surapprentissage
+- **Sauvegarde automatique** du meilleur modèle selon le validation loss
+- **Barre de progression** avec affichage du loss en temps réel
+
+### Datasets augmentés
+- **XLSUM**: 2 fichiers d'entraînement (au lieu de 1)
+- **MLSUM**: 5 fichiers d'entraînement (au lieu de 3)
+- **LEMONDE**: Nouveau dataset ajouté
+- **ALL**: Combine les 3 sources pour ~250k exemples disponibles
 
 ## Notes
 

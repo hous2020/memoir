@@ -9,7 +9,7 @@ HF_DATASETS = {
         "text_column": "text",
         "summary_column": "summary",
         "parquet_files": {
-            "train": ["french/train/0000.parquet"],
+            "train": ["french/train/0000.parquet", "french/train/0001.parquet"],
             "test": ["french/test/0000.parquet"],
             "validation": ["french/validation/0000.parquet"],
         },
@@ -19,7 +19,17 @@ HF_DATASETS = {
         "text_column": "text",
         "summary_column": "summary",
         "parquet_files": {
-            "train": ["fr/train/0000.parquet", "fr/train/0001.parquet", "fr/train/0002.parquet"],
+            "train": ["fr/train/0000.parquet", "fr/train/0001.parquet", "fr/train/0002.parquet", "fr/train/0003.parquet", "fr/train/0004.parquet"],
+            "test": ["fr/test/0000.parquet"],
+            "validation": ["fr/validation/0000.parquet"],
+        },
+    },
+    "lemonde": {
+        "repo_id": "trivago/mlsum",
+        "text_column": "text",
+        "summary_column": "summary",
+        "parquet_files": {
+            "train": ["fr/train/0000.parquet", "fr/train/0001.parquet"],
             "test": ["fr/test/0000.parquet"],
             "validation": ["fr/validation/0000.parquet"],
         },
@@ -52,16 +62,30 @@ def load_huggingface_dataset(dataset_name="xlsum", split="train", max_samples=No
     Loads a summarization dataset directly from Hugging Face.
 
     Args:
-        dataset_name: "xlsum", "mlsum", or "all".
+        dataset_name: "xlsum", "mlsum", "lemonde", or "all".
         split: Hugging Face split to load, for example "train", "test", or "validation".
         max_samples: Optional limit useful for fast Colab experiments.
     """
     if dataset_name == "all":
-        datasets = [
-            load_huggingface_dataset(name, split=split, max_samples=max_samples)
-            for name in HF_DATASETS
-        ]
-        return concatenate_datasets(datasets)
+        print("Loading all datasets combined...")
+        datasets = []
+        for name in HF_DATASETS:
+            try:
+                ds = load_huggingface_dataset(name, split=split, max_samples=max_samples)
+                datasets.append(ds)
+            except Exception as e:
+                print(f"Warning: Could not load {name}: {e}")
+        
+        if not datasets:
+            raise ValueError("No datasets could be loaded.")
+        
+        combined = concatenate_datasets(datasets)
+        print(f"Combined dataset: {len(combined)} examples from {len(datasets)} sources.")
+        
+        if max_samples:
+            combined = combined.select(range(min(max_samples, len(combined))))
+        
+        return combined
 
     if dataset_name not in HF_DATASETS:
         available = ", ".join([*HF_DATASETS.keys(), "all"])
