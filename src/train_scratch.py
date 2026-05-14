@@ -210,17 +210,15 @@ def train(
 
         avg_train_loss = total_loss / max(len(train_dataloader), 1)
         
-        # Validation phase
+        # Validation phase — loss only (fast, teacher-forced)
         print(f"\nRunning validation...")
         model.eval()
         val_loss = 0.0
-        val_predictions = []
-        val_references = []
 
         with torch.no_grad():
             for val_src, val_tgt in tqdm(val_dataloader, desc="Validation"):
                 val_src, val_tgt = val_src.to(device), val_tgt.to(device)
-                
+
                 val_tgt_input = val_tgt[:-1, :]
                 val_tgt_output = val_tgt[1:, :]
 
@@ -239,32 +237,33 @@ def train(
                 v_loss = criterion(val_output.view(-1, val_output.size(-1)), val_tgt_output.reshape(-1))
                 val_loss += v_loss.item()
 
-                # Generate predictions for ROUGE (limit to avoid slow validation)
-                max_rouge_samples = 100
-                for i in range(min(val_src.size(1), max(0, max_rouge_samples - len(val_predictions)))):
-                    try:
-                        generated_ids = generate_summary(
-                            model, val_src[:, i:i+1], special_ids, max_len=max_seq_len
-                        )
-                        generated = tokenizer.decode(generated_ids, skip_special_tokens=True)
-                        reference = tokenizer.decode(
-                            [t.item() for t in val_tgt[:, i] if t.item() != special_ids["pad"]],
-                            skip_special_tokens=True
-                        )
-                        if generated.strip() and reference.strip():
-                            val_predictions.append(generated)
-                            val_references.append(reference)
-                    except Exception as gen_err:
-                        logger.warning(f"Generation error for sample {i}: {gen_err}")
-
         avg_val_loss = val_loss / max(len(val_dataloader), 1)
-        
-        # Compute ROUGE scores
+
+        # ROUGE on 20 fixed samples from first validation batch (fast spot-check)
         rouge_scores = {"rouge1": 0.0, "rouge2": 0.0, "rougeL": 0.0}
-        if val_predictions:
+        rouge_predictions, rouge_references = [], []
+        rouge_src, rouge_tgt = next(iter(val_dataloader))
+        rouge_src, rouge_tgt = rouge_src.to(device), rouge_tgt.to(device)
+        with torch.no_grad():
+            for i in range(min(20, rouge_src.size(1))):
+                try:
+                    generated_ids = generate_summary(
+                        model, rouge_src[:, i:i+1], special_ids, max_len=max_seq_len
+                    )
+                    generated = tokenizer.decode(generated_ids, skip_special_tokens=True)
+                    reference = tokenizer.decode(
+                        [t.item() for t in rouge_tgt[:, i] if t.item() != special_ids["pad"]],
+                        skip_special_tokens=True,
+                    )
+                    if generated.strip() and reference.strip():
+                        rouge_predictions.append(generated)
+                        rouge_references.append(reference)
+                except Exception as gen_err:
+                    logger.warning(f"ROUGE generation error sample {i}: {gen_err}")
+        if rouge_predictions:
             rouge_scores = rouge_metric.compute(
-                predictions=val_predictions, 
-                references=val_references
+                predictions=rouge_predictions,
+                references=rouge_references,
             )
 
         # Update learning rate
