@@ -1,67 +1,97 @@
 #!/usr/bin/env python3
 """
-Script d'entraînement complet sur TOUS les datasets
-À exécuter depuis le notebook Colab pour un entraînement maximal
+Script d'entraînement complet sur TOUS les datasets disponibles.
+À exécuter depuis le notebook Colab.
+
+Datasets utilisés (5 sources françaises) :
+  - XLSum french      (~38k train)
+  - MLSUM fr          (~33k train)
+  - OrangeSum abstract (~30k train)
+  - OrangeSum title    (~30k train)
+  - OrangeSum wikilead (~2.5M train — limité par --max-samples)
 """
 
 import subprocess
 import sys
 
+
 def run_command(command, description):
-    """Exécute une commande et affiche le résultat"""
     print(f"\n{'='*70}")
-    print(f"🚀 {description}")
+    print(f">>> {description}")
     print(f"{'='*70}")
     print(f"Commande: {command}\n")
-    
+
     result = subprocess.run(command, shell=True)
-    
+
     if result.returncode != 0:
-        print(f"\n❌ Erreur lors de: {description}")
+        print(f"\nErreur lors de: {description}")
         sys.exit(1)
-    
-    print(f"\n✅ {description} - TERMINÉ")
+
+    print(f"\n[OK] {description} - TERMINE")
+
 
 def main():
-    print("\n" + "="*70)
-    print("🎯 ENTRAÎNEMENT MAXIMAL - TOUS LES DATASETS")
-    print("="*70)
-    print("\nCe script va:")
-    print("1. Entraîner le tokenizer sur 100k exemples (XLSum + MLSum)")
-    print("2. Entraîner le modèle avec architecture optimale (15 epochs)")
-    print("3. Évaluer le modèle sur 200 exemples de test")
-    print("\n⏱️  Temps estimé: 8-12 heures sur GPU")
-    print("="*70)
-    
-    # Étape 1: Entraînement du tokenizer
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Entraînement complet sur tous les datasets.")
+    parser.add_argument("--max-samples", type=int, default=100000,
+                        help="Limite par dataset (défaut: 100k → 500k total)")
+    parser.add_argument("--epochs", type=int, default=10)
+    parser.add_argument("--batch-size", type=int, default=32)
+    parser.add_argument("--d-model", type=int, default=384)
+    parser.add_argument("--nhead", type=int, default=6)
+    parser.add_argument("--num-layers", type=int, default=4)
+    parser.add_argument("--vocab-size", type=int, default=32000)
+    args = parser.parse_args()
+
+    total_samples = args.max_samples * 5  # 5 datasets
+
+    print("\n" + "=" * 70)
+    print("ENTRAINEMENT MAXIMAL - TOUS LES DATASETS FRANCAIS")
+    print("=" * 70)
+    print(f"\nDatasets: xlsum | mlsum | orangesum_abstract | orangesum_title | orangesum_wikilead")
+    print(f"Limite: {args.max_samples:,} exemples/dataset = ~{total_samples:,} total")
+    print(f"Architecture: d_model={args.d_model}, nhead={args.nhead}, layers={args.num_layers}")
+    print(f"Epochs: {args.epochs} | Batch: {args.batch_size}")
+    print("=" * 70)
+
     run_command(
-        "python src/train_tokenizer.py --dataset-name all --max-samples 100000 --vocab-size 40000",
-        "Étape 1/3: Entraînement du tokenizer sur tous les datasets"
+        f"python src/train_tokenizer.py"
+        f" --dataset-name all"
+        f" --max-samples {args.max_samples}"
+        f" --vocab-size {args.vocab_size}",
+        "Etape 1/3: Tokenizer BPE sur tous les datasets",
     )
-    
-    # Étape 2: Entraînement du modèle
+
     run_command(
-        "python src/train_scratch.py --dataset-name all --max-samples 100000 --epochs 15 --batch-size 32 --d-model 512 --nhead 8 --num-layers 6 --learning-rate 0.00005 --max-seq-len 150",
-        "Étape 2/3: Entraînement du modèle (architecture optimale)"
+        f"python src/train_scratch.py"
+        f" --dataset-name all"
+        f" --max-samples {args.max_samples}"
+        f" --epochs {args.epochs}"
+        f" --batch-size {args.batch_size}"
+        f" --d-model {args.d_model}"
+        f" --nhead {args.nhead}"
+        f" --num-layers {args.num_layers}"
+        f" --learning-rate 0.0001"
+        f" --max-seq-len 128",
+        "Etape 2/3: Entraînement du modèle Transformer",
     )
-    
-    # Étape 3: Évaluation
+
     run_command(
         "python src/evaluation.py --model-type scratch --dataset-name xlsum --num-samples 200",
-        "Étape 3/3: Évaluation du modèle"
+        "Etape 3/3: Evaluation ROUGE sur XLSum test",
     )
-    
-    print("\n" + "="*70)
-    print("🎉 ENTRAÎNEMENT COMPLET TERMINÉ !")
-    print("="*70)
-    print("\n📊 Résultats:")
-    print("   - Tokenizer: data/custom_tokenizer.json (vocabulaire: 40000)")
-    print("   - Modèle: models/transformer_scratch.pth")
-    print("   - Configuration: models/transformer_scratch_config.json")
-    print("\n💡 Vous pouvez maintenant:")
-    print("   - Tester l'application: streamlit run src/app.py")
-    print("   - Sauvegarder dans Google Drive (voir cellule dédiée)")
-    print("="*70 + "\n")
+
+    print("\n" + "=" * 70)
+    print("ENTRAINEMENT COMPLET TERMINE !")
+    print("=" * 70)
+    print("\nFichiers produits:")
+    print(f"  - Tokenizer : data/custom_tokenizer.json (vocab: {args.vocab_size:,})")
+    print(f"  - Modele    : models/transformer_scratch.pth")
+    print(f"  - Config    : models/transformer_scratch_config.json")
+    print("\nPour tester: streamlit run src/app.py")
+    print("=" * 70 + "\n")
+
 
 if __name__ == "__main__":
     main()

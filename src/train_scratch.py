@@ -1,6 +1,7 @@
 import os
 import argparse
 import json
+import logging
 
 import torch
 import torch.nn as nn
@@ -12,6 +13,9 @@ import evaluate
 
 from data_loader import load_huggingface_dataset
 from transformer_model import TransformerSummarizer
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+logger = logging.getLogger(__name__)
 
 
 # Hyperparameters
@@ -235,8 +239,9 @@ def train(
                 v_loss = criterion(val_output.view(-1, val_output.size(-1)), val_tgt_output.reshape(-1))
                 val_loss += v_loss.item()
 
-                # Generate predictions for ROUGE
-                for i in range(val_src.size(1)):
+                # Generate predictions for ROUGE (limit to avoid slow validation)
+                max_rouge_samples = 100
+                for i in range(min(val_src.size(1), max(0, max_rouge_samples - len(val_predictions)))):
                     try:
                         generated = generate_summary(
                             model, val_src[:, i:i+1], special_ids, max_len=max_seq_len
@@ -248,8 +253,8 @@ def train(
                         if generated.strip() and reference.strip():
                             val_predictions.append(generated)
                             val_references.append(reference)
-                    except:
-                        pass
+                    except Exception as gen_err:
+                        logger.warning(f"Generation error for sample {i}: {gen_err}")
 
         avg_val_loss = val_loss / max(len(val_dataloader), 1)
         
@@ -306,8 +311,10 @@ def train(
         model.train()
         print()
 
+    config_path = os.path.splitext(model_path)[0] + "_config.json"
     print(f"\nTraining complete. Best model saved to {model_path}.")
-    print(f"Model config saved to {config_path}.")
+    if os.path.exists(config_path):
+        print(f"Model config saved to {config_path}.")
 
 
 def generate_summary(model, src_tensor, special_ids, max_len=128):
@@ -346,7 +353,11 @@ def generate_summary(model, src_tensor, special_ids, max_len=128):
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Train the scratch Transformer summarizer.")
-    parser.add_argument("--dataset-name", choices=["xlsum", "mlsum", "all"], default="xlsum")
+    parser.add_argument(
+        "--dataset-name",
+        choices=["xlsum", "mlsum", "orangesum_abstract", "orangesum_title", "orangesum_wikilead", "all"],
+        default="all",
+    )
     parser.add_argument("--max-samples", type=int, default=None)
     parser.add_argument("--tokenizer-path", default="data/custom_tokenizer.json")
     parser.add_argument("--model-path", default="models/transformer_scratch.pth")

@@ -72,7 +72,11 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Evaluate the scratch summarization model with ROUGE.")
     parser.add_argument("--model-type", choices=["scratch"], default="scratch")
     parser.add_argument("--num-samples", type=int, default=20)
-    parser.add_argument("--dataset-name", choices=["xlsum", "mlsum", "lemonde"], default="xlsum")
+    parser.add_argument(
+        "--dataset-name",
+        choices=["xlsum", "mlsum", "orangesum_abstract", "orangesum_title", "orangesum_wikilead"],
+        default="xlsum",
+    )
     parser.add_argument("--dataset-path", default=None)
     return parser.parse_args()
 

@@ -44,7 +44,7 @@ class FrenchSummarizer:
         ).to(self.device)
 
         if model_path and os.path.exists(model_path):
-            self.model.load_state_dict(torch.load(model_path, map_location=self.device))
+            self.model.load_state_dict(torch.load(model_path, map_location=self.device, weights_only=True))
             logger.info("Custom model weights loaded successfully.")
         else:
             logger.warning(f"Model path {model_path} not found. Using untrained model.")
