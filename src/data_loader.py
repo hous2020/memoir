@@ -3,43 +3,41 @@ import os
 from datasets import DatasetDict, concatenate_datasets, load_dataset, load_from_disk
 
 
-# Tous les datasets français de résumé disponibles sur Hugging Face.
-# Pour "all", ils sont tous chargés et combinés.
+# Datasets français de résumé chargés via fichiers Parquet (évite les loading scripts bloqués).
+# Format du chemin parquet : hf://datasets/{repo}@refs/convert/parquet/{config}/{split}/{shard}.parquet
 HF_DATASETS = {
     "xlsum": {
         "repo_id": "csebuetnlp/xlsum",
-        "config_name": "french",
         "text_column": "text",
         "summary_column": "summary",
         # ~38k train — articles BBC en français
+        "parquet_files": {
+            "train":      ["french/train/0000.parquet"],
+            "test":       ["french/test/0000.parquet"],
+            "validation": ["french/validation/0000.parquet"],
+        },
     },
     "mlsum": {
         "repo_id": "reciTAL/mlsum",
-        "config_name": "fr",
         "text_column": "text",
         "summary_column": "summary",
         # ~33k train — articles de presse français
+        "parquet_files": {
+            "train":      ["fr/train/0000.parquet", "fr/train/0001.parquet", "fr/train/0002.parquet"],
+            "test":       ["fr/test/0000.parquet"],
+            "validation": ["fr/validation/0000.parquet"],
+        },
     },
-    "orangesum_abstract": {
-        "repo_id": "orange-nlp/orangesum",
-        "config_name": "abstract",
-        "text_column": "text",
-        "summary_column": "summary",
-        # ~30k train — résumés abstractifs d'articles Orange Vallée
-    },
-    "orangesum_title": {
-        "repo_id": "orange-nlp/orangesum",
-        "config_name": "title",
-        "text_column": "text",
-        "summary_column": "summary",
-        # ~30k train — génération de titres (résumés courts)
-    },
-    "orangesum_wikilead": {
-        "repo_id": "orange-nlp/orangesum",
-        "config_name": "wikilead",
-        "text_column": "text",
-        "summary_column": "summary",
-        # ~2.5M train — paragraphes d'intro Wikipedia FR (limité par max_samples)
+    "wiki_lingua_fr": {
+        "repo_id": "GEM/wiki_lingua",
+        "text_column": "source",
+        "summary_column": "target",
+        # ~41k train — articles Wikipedia FR avec résumé
+        "parquet_files": {
+            "train":      ["fr/train/0000.parquet"],
+            "test":       ["fr/test/0000.parquet"],
+            "validation": ["fr/validation/0000.parquet"],
+        },
     },
 }
 
@@ -60,13 +58,18 @@ def _normalize_dataset(dataset, text_column="text", summary_column="summary"):
     return dataset.filter(lambda item: bool(item["text"]) and bool(item["summary"]))
 
 
+def _select_max_samples(dataset, max_samples=None):
+    if max_samples is None:
+        return dataset
+    return dataset.select(range(min(max_samples, len(dataset))))
+
+
 def load_huggingface_dataset(dataset_name="xlsum", split="train", max_samples=None):
     """
-    Charge un dataset de résumé depuis Hugging Face.
+    Charge un dataset de résumé depuis Hugging Face via fichiers Parquet.
 
     Args:
-        dataset_name: "xlsum", "mlsum", "orangesum_abstract", "orangesum_title",
-                      "orangesum_wikilead", ou "all" pour tout combiner.
+        dataset_name: "xlsum", "mlsum", "wiki_lingua_fr", ou "all".
         split: "train", "test" ou "validation".
         max_samples: Limite optionnelle (utile pour tests rapides sur Colab).
                      En mode "all", la limite est répartie équitablement entre datasets.
@@ -98,18 +101,19 @@ def load_huggingface_dataset(dataset_name="xlsum", split="train", max_samples=No
         raise ValueError(f"Dataset inconnu '{dataset_name}'. Disponibles: {available}")
 
     spec = HF_DATASETS[dataset_name]
+    if split not in spec["parquet_files"]:
+        available_splits = ", ".join(spec["parquet_files"].keys())
+        raise ValueError(f"Split '{split}' inconnu pour {dataset_name}. Disponibles: {available_splits}")
 
-    # Utiliser le slicing HF pour ne télécharger que max_samples exemples
-    hf_split = f"{split}[:{max_samples}]" if max_samples else split
+    data_files = [
+        f"hf://datasets/{spec['repo_id']}@refs/convert/parquet/{filename}"
+        for filename in spec["parquet_files"][split]
+    ]
 
-    print(f"Chargement de {dataset_name} (repo={spec['repo_id']}, split={split})...")
-    dataset = load_dataset(
-        spec["repo_id"],
-        spec.get("config_name"),
-        split=hf_split,
-        trust_remote_code=True,
-    )
+    print(f"Chargement de {dataset_name} (split={split})...")
+    dataset = load_dataset("parquet", data_files=data_files, split="train")
     dataset = _normalize_dataset(dataset, spec["text_column"], spec["summary_column"])
+    dataset = _select_max_samples(dataset, max_samples)
     print(f"Chargé: {len(dataset)} exemples depuis {dataset_name}.")
     return dataset
 

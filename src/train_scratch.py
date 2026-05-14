@@ -355,7 +355,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Train the scratch Transformer summarizer.")
     parser.add_argument(
         "--dataset-name",
-        choices=["xlsum", "mlsum", "orangesum_abstract", "orangesum_title", "orangesum_wikilead", "all"],
+        choices=["xlsum", "mlsum", "wiki_lingua_fr", "all"],
         default="all",
     )
     parser.add_argument("--max-samples", type=int, default=None)

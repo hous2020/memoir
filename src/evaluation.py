@@ -74,7 +74,7 @@ def parse_args():
     parser.add_argument("--num-samples", type=int, default=20)
     parser.add_argument(
         "--dataset-name",
-        choices=["xlsum", "mlsum", "orangesum_abstract", "orangesum_title", "orangesum_wikilead"],
+        choices=["xlsum", "mlsum", "wiki_lingua_fr"],
         default="xlsum",
     )
     parser.add_argument("--dataset-path", default=None)

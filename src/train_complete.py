@@ -49,7 +49,7 @@ def main():
     print("\n" + "=" * 70)
     print("ENTRAINEMENT MAXIMAL - TOUS LES DATASETS FRANCAIS")
     print("=" * 70)
-    print(f"\nDatasets: xlsum | mlsum | orangesum_abstract | orangesum_title | orangesum_wikilead")
+    print(f"\nDatasets: xlsum | mlsum | wiki_lingua_fr")
     print(f"Limite: {args.max_samples:,} exemples/dataset = ~{total_samples:,} total")
     print(f"Architecture: d_model={args.d_model}, nhead={args.nhead}, layers={args.num_layers}")
     print(f"Epochs: {args.epochs} | Batch: {args.batch_size}")
