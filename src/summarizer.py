@@ -1,5 +1,6 @@
 import logging
 import os
+import json
 from typing import Optional
 
 import torch
@@ -32,16 +33,14 @@ class FrenchSummarizer:
         self.custom_tokenizer = Tokenizer.from_file("data/custom_tokenizer.json")
         self.special_ids = self._load_special_ids()
 
-        d_model = 256
-        nhead = 4
-        num_layers = 2
+        config = self._load_model_config(model_path)
 
         self.model = TransformerSummarizer(
             vocab_size=self.custom_tokenizer.get_vocab_size(),
-            d_model=d_model,
-            nhead=nhead,
-            num_encoder_layers=num_layers,
-            num_decoder_layers=num_layers,
+            d_model=config["d_model"],
+            nhead=config["nhead"],
+            num_encoder_layers=config["num_layers"],
+            num_decoder_layers=config["num_layers"],
         ).to(self.device)
 
         if model_path and os.path.exists(model_path):
@@ -51,6 +50,25 @@ class FrenchSummarizer:
             logger.warning(f"Model path {model_path} not found. Using untrained model.")
 
         self.model.eval()
+
+    def _load_model_config(self, model_path):
+        default_config = {
+            "d_model": 256,
+            "nhead": 4,
+            "num_layers": 2,
+            "max_seq_len": 128,
+        }
+        if not model_path:
+            return default_config
+
+        config_path = os.path.splitext(model_path)[0] + "_config.json"
+        if not os.path.exists(config_path):
+            logger.warning(f"Model config not found at {config_path}. Using default architecture.")
+            return default_config
+
+        with open(config_path, "r", encoding="utf-8") as config_file:
+            loaded_config = json.load(config_file)
+        return {**default_config, **loaded_config}
 
     def _load_special_ids(self):
         special_ids = {

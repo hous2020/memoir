@@ -1,5 +1,6 @@
 import os
 import argparse
+import json
 
 import torch
 import torch.nn as nn
@@ -75,7 +76,19 @@ def build_collate_fn(pad_id):
     return collate_fn
 
 
-def train(dataset_name="xlsum", max_samples=None, tokenizer_path="data/custom_tokenizer.json"):
+def train(
+    dataset_name="xlsum",
+    max_samples=None,
+    tokenizer_path="data/custom_tokenizer.json",
+    model_path="models/transformer_scratch.pth",
+    epochs=EPOCHS,
+    batch_size=BATCH_SIZE,
+    learning_rate=LR,
+    max_seq_len=MAX_SEQ_LEN,
+    d_model=D_MODEL,
+    nhead=NHEAD,
+    num_layers=NUM_LAYERS,
+):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Training on {device}")
 
@@ -93,27 +106,27 @@ def train(dataset_name="xlsum", max_samples=None, tokenizer_path="data/custom_to
         max_samples=max_samples,
     )
 
-    dataset = SummarizationDataset(raw_dataset, tokenizer, max_len=MAX_SEQ_LEN)
+    dataset = SummarizationDataset(raw_dataset, tokenizer, max_len=max_seq_len)
     dataloader = DataLoader(
         dataset,
-        batch_size=BATCH_SIZE,
+        batch_size=batch_size,
         shuffle=True,
         collate_fn=build_collate_fn(special_ids["pad"]),
     )
 
     model = TransformerSummarizer(
         vocab_size=tokenizer.get_vocab_size(),
-        d_model=D_MODEL,
-        nhead=NHEAD,
-        num_encoder_layers=NUM_LAYERS,
-        num_decoder_layers=NUM_LAYERS,
+        d_model=d_model,
+        nhead=nhead,
+        num_encoder_layers=num_layers,
+        num_decoder_layers=num_layers,
     ).to(device)
 
     criterion = nn.CrossEntropyLoss(ignore_index=special_ids["pad"])
-    optimizer = optim.Adam(model.parameters(), lr=LR)
+    optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
     model.train()
-    for epoch in range(EPOCHS):
+    for epoch in range(epochs):
         total_loss = 0.0
         for batch_idx, (src, tgt) in enumerate(dataloader):
             src, tgt = src.to(device), tgt.to(device)
@@ -149,9 +162,22 @@ def train(dataset_name="xlsum", max_samples=None, tokenizer_path="data/custom_to
         avg_loss = total_loss / max(len(dataloader), 1)
         print(f"Epoch {epoch + 1} complete | Average loss: {avg_loss:.4f}")
 
-    os.makedirs("models", exist_ok=True)
-    torch.save(model.state_dict(), "models/transformer_scratch.pth")
-    print("Training complete. Model saved.")
+    os.makedirs(os.path.dirname(model_path), exist_ok=True)
+    torch.save(model.state_dict(), model_path)
+
+    config = {
+        "vocab_size": tokenizer.get_vocab_size(),
+        "d_model": d_model,
+        "nhead": nhead,
+        "num_layers": num_layers,
+        "max_seq_len": max_seq_len,
+    }
+    config_path = os.path.splitext(model_path)[0] + "_config.json"
+    with open(config_path, "w", encoding="utf-8") as config_file:
+        json.dump(config, config_file, indent=2)
+
+    print(f"Training complete. Model saved to {model_path}.")
+    print(f"Model config saved to {config_path}.")
 
 
 def parse_args():
@@ -159,6 +185,14 @@ def parse_args():
     parser.add_argument("--dataset-name", choices=["xlsum", "mlsum", "all"], default="xlsum")
     parser.add_argument("--max-samples", type=int, default=None)
     parser.add_argument("--tokenizer-path", default="data/custom_tokenizer.json")
+    parser.add_argument("--model-path", default="models/transformer_scratch.pth")
+    parser.add_argument("--epochs", type=int, default=EPOCHS)
+    parser.add_argument("--batch-size", type=int, default=BATCH_SIZE)
+    parser.add_argument("--learning-rate", type=float, default=LR)
+    parser.add_argument("--max-seq-len", type=int, default=MAX_SEQ_LEN)
+    parser.add_argument("--d-model", type=int, default=D_MODEL)
+    parser.add_argument("--nhead", type=int, default=NHEAD)
+    parser.add_argument("--num-layers", type=int, default=NUM_LAYERS)
     return parser.parse_args()
 
 
@@ -168,4 +202,12 @@ if __name__ == "__main__":
         dataset_name=args.dataset_name,
         max_samples=args.max_samples,
         tokenizer_path=args.tokenizer_path,
+        model_path=args.model_path,
+        epochs=args.epochs,
+        batch_size=args.batch_size,
+        learning_rate=args.learning_rate,
+        max_seq_len=args.max_seq_len,
+        d_model=args.d_model,
+        nhead=args.nhead,
+        num_layers=args.num_layers,
     )
