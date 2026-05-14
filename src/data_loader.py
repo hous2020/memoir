@@ -9,7 +9,7 @@ HF_DATASETS = {
         "text_column": "text",
         "summary_column": "summary",
         "parquet_files": {
-            "train": ["french/train/0000.parquet", "french/train/0001.parquet"],
+            "train": ["french/train/0000.parquet"],
             "test": ["french/test/0000.parquet"],
             "validation": ["french/validation/0000.parquet"],
         },
@@ -19,17 +19,7 @@ HF_DATASETS = {
         "text_column": "text",
         "summary_column": "summary",
         "parquet_files": {
-            "train": ["fr/train/0000.parquet", "fr/train/0001.parquet", "fr/train/0002.parquet", "fr/train/0003.parquet", "fr/train/0004.parquet"],
-            "test": ["fr/test/0000.parquet"],
-            "validation": ["fr/validation/0000.parquet"],
-        },
-    },
-    "lemonde": {
-        "repo_id": "trivago/mlsum",
-        "text_column": "text",
-        "summary_column": "summary",
-        "parquet_files": {
-            "train": ["fr/train/0000.parquet", "fr/train/0001.parquet"],
+            "train": ["fr/train/0000.parquet", "fr/train/0001.parquet", "fr/train/0002.parquet"],
             "test": ["fr/test/0000.parquet"],
             "validation": ["fr/validation/0000.parquet"],
         },

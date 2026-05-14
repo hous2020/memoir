@@ -27,7 +27,7 @@ def main():
     print("🎯 ENTRAÎNEMENT MAXIMAL - TOUS LES DATASETS")
     print("="*70)
     print("\nCe script va:")
-    print("1. Entraîner le tokenizer sur 100k exemples (XLSum + MLSum + LeMonde)")
+    print("1. Entraîner le tokenizer sur 100k exemples (XLSum + MLSum)")
     print("2. Entraîner le modèle avec architecture optimale (15 epochs)")
     print("3. Évaluer le modèle sur 200 exemples de test")
     print("\n⏱️  Temps estimé: 8-12 heures sur GPU")
